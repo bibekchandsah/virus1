@@ -95,6 +95,48 @@ async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/api/debug")
+async def debug_info():
+    """Debug endpoint to check Playwright status."""
+    import subprocess
+    import sys
+    import os
+    
+    # Check if playwright module is available
+    try:
+        import playwright
+        playwright_installed = True
+        playwright_version = getattr(playwright, '__version__', 'unknown')
+    except ImportError:
+        playwright_installed = False
+        playwright_version = None
+    
+    # Check if browsers are installed
+    browser_check = None
+    try:
+        result = subprocess.run(
+            [sys.executable, '-c', 'from playwright.sync_api import sync_playwright; p = sync_playwright().start(); b = p.chromium.launch(headless=True, args=["--no-sandbox"]); b.close(); p.stop(); print("OK")'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        browser_check = {
+            "success": result.returncode == 0,
+            "stdout": result.stdout.strip(),
+            "stderr": result.stderr.strip()[:500] if result.stderr else None
+        }
+    except Exception as e:
+        browser_check = {"success": False, "error": str(e)}
+    
+    return {
+        "playwright_installed": playwright_installed,
+        "playwright_version": playwright_version,
+        "browser_check": browser_check,
+        "python_version": sys.version,
+        "env_playwright_path": os.environ.get('PLAYWRIGHT_BROWSERS_PATH', 'not set')
+    }
+
+
 @app.post("/api/scrape", response_model=ScrapeResponse)
 async def scrape_url(request: ScrapeRequest):
     """

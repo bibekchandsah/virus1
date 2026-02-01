@@ -5,6 +5,7 @@ This runs as a separate process to avoid asyncio event loop issues on Windows.
 
 import sys
 import json
+import os
 
 def fetch_with_js(url: str, timeout: int = 30000) -> dict:
     """Fetch page with JavaScript rendering."""
@@ -12,7 +13,17 @@ def fetch_with_js(url: str, timeout: int = 30000) -> dict:
         from playwright.sync_api import sync_playwright
         
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # Launch with Docker-compatible options
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--single-process',
+                ]
+            )
             context = browser.new_context(
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             )

@@ -23,3 +23,7 @@ git push -u origin main
 git remote add origin https://github.com/bibekchandsah/virus1.git
 git branch -M main
 git push -u origin main
+
+
+https://email-web-scraper.onrender.com/static/index.html
+http://127.0.0.1:8000/static/index.html

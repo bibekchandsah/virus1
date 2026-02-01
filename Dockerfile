@@ -10,8 +10,16 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Playwright browsers explicitly
+RUN playwright install chromium
+RUN playwright install-deps chromium
+
 # Copy application code
 COPY . .
+
+# Environment variables for Playwright in Docker
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PYTHONUNBUFFERED=1
 
 # Expose port
 EXPOSE 10000
