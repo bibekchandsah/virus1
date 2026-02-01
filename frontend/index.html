@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email & Name Scraper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .input-group input[type="text"] {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .input-group input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 15px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            cursor: pointer;
+            color: #555;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            color: #856404;
+            font-size: 14px;
+        }
+
+        .disclaimer strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-info {
+            color: #666;
+        }
+
+        .results-info h2 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .section-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            background: #e9ecef;
+            color: #495057;
+            text-transform: capitalize;
+        }
+
+        .error-message {
+            display: none;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .no-results svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 30px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .input-section {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .export-buttons {
+                flex-wrap: wrap;
+                width: 100%;
+            }
+
+            .export-buttons .btn {
+                flex: 1;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Email & Name Scraper</h1>
+            <p>Extract email addresses and associated names from any webpage</p>
+        </header>
+
+        <div class="card">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="url">Webpage URL</label>
+                    <input type="text" id="url" placeholder="https://example.com/contact" autocomplete="off">
+                </div>
+                <button class="btn btn-primary" id="scrapeBtn" onclick="scrapeUrl()">
+                    Scrape Emails
+                </button>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="checkMx">
+                <label for="checkMx">Validate email domains via MX lookup (slower but more accurate)</label>
+            </div>
+
+            <div class="disclaimer">
+                <strong>⚠️ Legal Disclaimer</strong>
+                By using this tool, you confirm that you have permission to scrape the target website. 
+                This tool respects robots.txt and will not bypass authentication, paywalls, or CAPTCHAs.
+                Use responsibly and ethically.
+            </div>
+        </div>
+
+        <div class="card loading" id="loading">
+            <div class="spinner"></div>
+            <p>Scraping webpage... This may take a few seconds.</p>
+        </div>
+
+        <div class="card error-message" id="error">
+            <strong>Error</strong>
+            <p id="errorText"></p>
+        </div>
+
+        <div class="card results" id="results">
+            <div class="results-header">
+                <div class="results-info">
+                    <h2 id="resultsTitle">Results</h2>
+                    <p id="resultsSubtitle"></p>
+                </div>
+                <div class="export-buttons">
+                    <button class="btn btn-secondary" onclick="exportResults('csv')">
+                        Export CSV
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportResults('json')">
+                        Export JSON
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportResults('txt')">
+                        Export TXT
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Confidence</th>
+                            <th>Source Section</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="no-results" id="noResults" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3>No emails found</h3>
+                <p>The webpage doesn't contain any valid email addresses.</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with FastAPI & BeautifulSoup | Use responsibly</p>
+        </footer>
+    </div>
+
+    <script>
+        // API base URL - change this if your backend is on a different host/port
+        const API_BASE = 'http://127.0.0.1:8000';
+        
+        let currentUrl = '';
+        let currentCheckMx = false;
+
+        // Handle Enter key in URL input
+        document.getElementById('url').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                scrapeUrl();
+            }
+        });
+
+        async function scrapeUrl() {
+            const urlInput = document.getElementById('url');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                showError('Please enter a URL');
+                return;
+            }
+
+            // Store for export
+            currentUrl = url;
+            currentCheckMx = document.getElementById('checkMx').checked;
+
+            // Show loading, hide results/error
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('scrapeBtn').disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/scrape`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: url,
+                        check_mx: currentCheckMx
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || data.detail || 'Failed to scrape URL');
+                }
+
+                displayResults(data);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('scrapeBtn').disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('resultsTitle').textContent = 
+                `Found ${data.total_emails} email${data.total_emails !== 1 ? 's' : ''}`;
+            
+            let subtitle = `From: ${data.page_title || data.url}`;
+            if (data.cached) subtitle += ' (cached)';
+            subtitle += ` | Time: ${data.scrape_time}s`;
+            document.getElementById('resultsSubtitle').textContent = subtitle;
+
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            if (data.emails.length === 0) {
+                document.getElementById('noResults').style.display = 'block';
+                document.querySelector('.table-container').style.display = 'none';
+            } else {
+                document.getElementById('noResults').style.display = 'none';
+                document.querySelector('.table-container').style.display = 'block';
+
+                data.emails.forEach(email => {
+                    const row = document.createElement('tr');
+                    
+                    // Determine confidence class
+                    let confidenceClass = 'confidence-low';
+                    if (email.confidence >= 70) confidenceClass = 'confidence-high';
+                    else if (email.confidence >= 40) confidenceClass = 'confidence-medium';
+
+                    row.innerHTML = `
+                        <td><strong>${escapeHtml(email.name)}</strong></td>
+                        <td><a href="mailto:${escapeHtml(email.email)}">${escapeHtml(email.email)}</a></td>
+                        <td><span class="confidence-badge ${confidenceClass}">${email.confidence}%</span></td>
+                        <td><span class="section-badge">${escapeHtml(email.source_section)}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            document.getElementById('results').classList.add('active');
+        }
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('error').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+        }
+
+        function exportResults(format) {
+            if (!currentUrl) return;
+            
+            const params = new URLSearchParams({
+                url: currentUrl,
+                check_mx: currentCheckMx
+            });
+            
+            window.open(`${API_BASE}/api/export/${format}?${params}`, '_blank');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

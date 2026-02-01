@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files
+debug_*.py
+check_*.py
+*_test.py
+debug_result.txt
+
+# Misc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

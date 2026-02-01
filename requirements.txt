@@ -1,0 +1,29 @@
+# Email & Name Scraper - Requirements
+# pip install -r requirements.txt
+# python run.py
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# HTTP Client
+httpx>=0.25.0
+
+# HTML Parsing
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# DNS Validation
+dnspython>=2.4.0
+
+# Data Validation
+pydantic>=2.5.0
+
+# Utilities
+python-multipart>=0.0.6
+
+# JavaScript rendering support
+playwright>=1.40.0
+
+# Optional: NLP for better name detection (uncomment if needed)
+# spacy>=3.7.0

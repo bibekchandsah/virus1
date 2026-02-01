@@ -1,0 +1,25 @@
+https://thunderbit.com/tool/email-extractor
+
+test page
+https://kiit.ac.in/antiragging/
+https://ksca.kiit.ac.in/people/
+https://biotech.kiit.ac.in/faculty/
+https://cse.kiit.ac.in/profiles/lipika-mohanty/
+https://biotech.kiit.ac.in/staff/
+
+
+
+
+
+
+echo "# virus1" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/bibekchandsah/virus1.git
+git push -u origin main
+
+git remote add origin https://github.com/bibekchandsah/virus1.git
+git branch -M main
+git push -u origin main
