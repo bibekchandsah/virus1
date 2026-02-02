@@ -146,7 +146,7 @@ class WebScraper:
             parsed = urlparse(url)
             robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
             
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
                 response = await client.get(robots_url, headers=self.DEFAULT_HEADERS)
                 
                 if response.status_code == 200:
@@ -175,20 +175,29 @@ class WebScraper:
                 if domain:
                     rate_limiter.wait(domain)
                 
-                async with httpx.AsyncClient(
-                    timeout=self.timeout,
-                    follow_redirects=True,
-                    verify=True
-                ) as client:
-                    response = await client.get(url, headers=self.DEFAULT_HEADERS)
-                    response.raise_for_status()
-                    
-                    # Check content type
-                    content_type = response.headers.get('content-type', '')
-                    if 'text/html' not in content_type and 'text/plain' not in content_type:
-                        return None, f"Unsupported content type: {content_type}"
-                    
-                    return response.text, None
+                # Try with SSL verification first, then without if it fails
+                ssl_verify = True
+                for ssl_attempt in range(2):
+                    try:
+                        async with httpx.AsyncClient(
+                            timeout=self.timeout,
+                            follow_redirects=True,
+                            verify=ssl_verify
+                        ) as client:
+                            response = await client.get(url, headers=self.DEFAULT_HEADERS)
+                            response.raise_for_status()
+                            
+                            # Check content type
+                            content_type = response.headers.get('content-type', '')
+                            if 'text/html' not in content_type and 'text/plain' not in content_type:
+                                return None, f"Unsupported content type: {content_type}"
+                            
+                            return response.text, None
+                    except Exception as e:
+                        if ssl_verify and 'SSL' in str(e) or 'CERTIFICATE' in str(e).upper():
+                            ssl_verify = False  # Retry without SSL verification
+                            continue
+                        raise
                     
             except httpx.TimeoutException:
                 last_error = "Request timeout"
