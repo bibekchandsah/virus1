@@ -239,6 +239,32 @@
             top: 0;
         }
 
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        th.sortable:hover {
+            background: #e9ecef;
+        }
+
+        th.sortable::after {
+            content: ' \2195';
+            opacity: 0.3;
+            font-size: 12px;
+        }
+
+        th.sortable.asc::after {
+            content: ' \2191';
+            opacity: 1;
+        }
+
+        th.sortable.desc::after {
+            content: ' \2193';
+            opacity: 1;
+        }
+
         tr:hover {
             background: #f8f9fa;
         }
@@ -266,6 +292,35 @@
             color: #721c24;
         }
 
+        .editable-name {
+            padding: 4px 8px;
+            border: 1px dashed transparent;
+            border-radius: 4px;
+            cursor: text;
+            transition: all 0.2s;
+            min-width: 100px;
+            display: inline-block;
+        }
+
+        .editable-name:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .editable-name:focus {
+            outline: none;
+            border-color: #667eea;
+            border-style: solid;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .name-hint {
+            font-size: 10px;
+            color: #999;
+            margin-left: 5px;
+        }
+
         .section-badge {
             display: inline-block;
             padding: 4px 10px;
@@ -274,6 +329,47 @@
             background: #e9ecef;
             color: #495057;
             text-transform: capitalize;
+        }
+
+        .btn-copy {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            background: #667eea;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: #5a6fd6;
+            transform: scale(1.02);
+        }
+
+        .btn-copy.copied {
+            background: #28a745;
+        }
+
+        .btn-copy-all {
+            padding: 4px 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #667eea;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .btn-copy-all:hover {
+            background: #5a6fd6;
+        }
+
+        .btn-copy-all.copied {
+            background: #28a745;
         }
 
         .error-message {
@@ -346,8 +442,8 @@
         <div class="card">
             <div class="input-section">
                 <div class="input-group">
-                    <label for="url">Webpage URL</label>
-                    <input type="text" id="url" placeholder="https://example.com/contact" autocomplete="off">
+                    <label for="url">Webpage URL(s) <span style="font-weight:normal;color:#666;font-size:13px;">- separate multiple URLs with comma</span></label>
+                    <input type="text" id="url" placeholder="https://example.com/contact, https://example.com/about" autocomplete="off">
                 </div>
                 <button class="btn btn-primary" id="scrapeBtn" onclick="scrapeUrl()">
                     Scrape Emails
@@ -369,7 +465,7 @@
 
         <div class="card loading" id="loading">
             <div class="spinner"></div>
-            <p>Scraping webpage... This may take a few seconds.</p>
+            <p id="loadingText">Scraping webpage... This may take a few seconds.</p>
         </div>
 
         <div class="card error-message" id="error">
@@ -400,10 +496,11 @@
                 <table id="resultsTable">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Confidence</th>
-                            <th>Source Section</th>
+                            <th class="sortable" data-sort="name" onclick="sortTable('name')">Name</th>
+                            <th class="sortable" data-sort="email" onclick="sortTable('email')">Email</th>
+                            <th class="sortable" data-sort="confidence" onclick="sortTable('confidence')">Confidence</th>
+                            <th class="sortable" data-sort="source" onclick="sortTable('source')">Source</th>
+                            <th><button class="btn-copy-all" onclick="copyAllEmails()">Copy All</button></th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody">
@@ -441,15 +538,21 @@
 
         async function scrapeUrl() {
             const urlInput = document.getElementById('url');
-            const url = urlInput.value.trim();
+            const urlText = urlInput.value.trim();
             
-            if (!url) {
+            if (!urlText) {
                 showError('Please enter a URL');
                 return;
             }
 
-            // Store for export
-            currentUrl = url;
+            // Split by comma and clean up URLs
+            const urls = urlText.split(',').map(u => u.trim()).filter(u => u.length > 0);
+            
+            if (urls.length === 0) {
+                showError('Please enter at least one valid URL');
+                return;
+            }
+
             currentCheckMx = document.getElementById('checkMx').checked;
 
             // Show loading, hide results/error
@@ -458,30 +561,79 @@
             document.getElementById('error').classList.remove('active');
             document.getElementById('scrapeBtn').disabled = true;
 
+            const allEmails = [];
+            const errors = [];
+            let totalTime = 0;
+
             try {
-                const response = await fetch(`${API_BASE}/api/scrape`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        url: url,
-                        check_mx: currentCheckMx
-                    })
-                });
+                for (let i = 0; i < urls.length; i++) {
+                    const url = urls[i];
+                    document.getElementById('loadingText').textContent = 
+                        `Scraping URL ${i + 1} of ${urls.length}... ${url.substring(0, 50)}${url.length > 50 ? '...' : ''}`;
+                    
+                    try {
+                        const response = await fetch(`${API_BASE}/api/scrape`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                url: url,
+                                check_mx: currentCheckMx
+                            })
+                        });
 
-                const data = await response.json();
+                        const data = await response.json();
 
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || data.detail || 'Failed to scrape URL');
+                        if (response.ok && data.success) {
+                            // Add source URL to each email
+                            const emailsWithSource = data.emails.map(e => ({
+                                ...e,
+                                source_url: url,
+                                source_domain: new URL(url).hostname
+                            }));
+                            allEmails.push(...emailsWithSource);
+                            totalTime += data.scrape_time;
+                        } else {
+                            errors.push(`${url}: ${data.error || 'Failed'}`);
+                        }
+                    } catch (err) {
+                        errors.push(`${url}: ${err.message}`);
+                    }
                 }
 
-                displayResults(data);
+                // Deduplicate emails by email address
+                const uniqueEmails = [];
+                const seenEmails = new Set();
+                for (const email of allEmails) {
+                    if (!seenEmails.has(email.email.toLowerCase())) {
+                        seenEmails.add(email.email.toLowerCase());
+                        uniqueEmails.push(email);
+                    }
+                }
+
+                const combinedData = {
+                    success: uniqueEmails.length > 0 || errors.length === 0,
+                    emails: uniqueEmails,
+                    total_emails: uniqueEmails.length,
+                    scrape_time: totalTime.toFixed(2),
+                    page_title: urls.length === 1 ? urls[0] : `${urls.length} URLs`,
+                    errors: errors
+                };
+
+                displayResults(combinedData);
+
+                if (errors.length > 0 && uniqueEmails.length > 0) {
+                    console.warn('Some URLs failed:', errors);
+                } else if (errors.length > 0 && uniqueEmails.length === 0) {
+                    showError('All URLs failed: ' + errors.join('; '));
+                }
 
             } catch (error) {
                 showError(error.message);
             } finally {
                 document.getElementById('loading').classList.remove('active');
+                document.getElementById('loadingText').textContent = 'Scraping webpage... This may take a few seconds.';
                 document.getElementById('scrapeBtn').disabled = false;
             }
         }
@@ -495,9 +647,6 @@
             subtitle += ` | Time: ${data.scrape_time}s`;
             document.getElementById('resultsSubtitle').textContent = subtitle;
 
-            const tbody = document.getElementById('resultsBody');
-            tbody.innerHTML = '';
-
             if (data.emails.length === 0) {
                 document.getElementById('noResults').style.display = 'block';
                 document.querySelector('.table-container').style.display = 'none';
@@ -505,22 +654,12 @@
                 document.getElementById('noResults').style.display = 'none';
                 document.querySelector('.table-container').style.display = 'block';
 
-                data.emails.forEach(email => {
-                    const row = document.createElement('tr');
-                    
-                    // Determine confidence class
-                    let confidenceClass = 'confidence-low';
-                    if (email.confidence >= 70) confidenceClass = 'confidence-high';
-                    else if (email.confidence >= 40) confidenceClass = 'confidence-medium';
+                // Store emails for copy all and sorting functions
+                window.currentEmails = data.emails.map(e => e.email);
+                window.currentEmailData = data.emails;
+                window.currentSort = { column: null, direction: 'asc' };
 
-                    row.innerHTML = `
-                        <td><strong>${escapeHtml(email.name)}</strong></td>
-                        <td><a href="mailto:${escapeHtml(email.email)}">${escapeHtml(email.email)}</a></td>
-                        <td><span class="confidence-badge ${confidenceClass}">${email.confidence}%</span></td>
-                        <td><span class="section-badge">${escapeHtml(email.source_section)}</span></td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                renderTable(data.emails);
             }
 
             document.getElementById('results').classList.add('active');
@@ -533,20 +672,187 @@
         }
 
         function exportResults(format) {
-            if (!currentUrl) return;
+            if (!window.currentEmailData || window.currentEmailData.length === 0) {
+                alert('No data to export');
+                return;
+            }
             
-            const params = new URLSearchParams({
-                url: currentUrl,
-                check_mx: currentCheckMx
-            });
+            const data = window.currentEmailData;
+            let content, filename, mimeType;
             
-            window.open(`${API_BASE}/api/export/${format}?${params}`, '_blank');
+            if (format === 'csv') {
+                const headers = ['Name', 'Email', 'Confidence', 'Source URL', 'Source Section', 'Validation Status'];
+                const rows = data.map(e => [
+                    `"${e.name.replace(/"/g, '""')}"`,
+                    e.email,
+                    e.confidence + '%',
+                    e.source_url || '',
+                    e.source_section || '',
+                    e.validation_status || ''
+                ]);
+                content = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                filename = 'emails.csv';
+                mimeType = 'text/csv';
+            } else if (format === 'json') {
+                content = JSON.stringify(data, null, 2);
+                filename = 'emails.json';
+                mimeType = 'application/json';
+            } else if (format === 'txt') {
+                content = data.map(e => `${e.name} <${e.email}>`).join('\n');
+                filename = 'emails.txt';
+                mimeType = 'text/plain';
+            }
+            
+            // Create and download file
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function renderTable(emails) {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+            
+            emails.forEach((email, index) => {
+                const row = document.createElement('tr');
+                
+                // Determine confidence class
+                let confidenceClass = 'confidence-low';
+                if (email.confidence >= 70) confidenceClass = 'confidence-high';
+                else if (email.confidence >= 40) confidenceClass = 'confidence-medium';
+
+                const sourceDomain = email.source_domain || 'unknown';
+                row.innerHTML = `
+                    <td>
+                        <span class="editable-name" 
+                              contenteditable="true" 
+                              data-email="${escapeHtml(email.email)}"
+                              title="Click to edit name"
+                              onblur="updateName(this, '${escapeHtml(email.email)}')"
+                              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
+                            ${escapeHtml(email.name)}
+                        </span>
+                    </td>
+                    <td><a href="mailto:${escapeHtml(email.email)}">${escapeHtml(email.email)}</a></td>
+                    <td><span class="confidence-badge ${confidenceClass}">${email.confidence}%</span></td>
+                    <td><span class="section-badge" title="${escapeHtml(email.source_url || '')}">${escapeHtml(sourceDomain)}</span></td>
+                    <td><button class="btn-copy" onclick="copyEmail('${escapeHtml(email.email)}', this)">Copy</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateName(element, emailAddress) {
+            const newName = element.textContent.trim();
+            if (!newName) {
+                // Restore original name if empty
+                const emailData = window.currentEmailData.find(e => e.email === emailAddress);
+                if (emailData) element.textContent = emailData.name;
+                return;
+            }
+            
+            // Update the stored data
+            const emailData = window.currentEmailData.find(e => e.email === emailAddress);
+            if (emailData) {
+                emailData.name = newName;
+            }
+        }
+
+        function sortTable(column) {
+            if (!window.currentEmailData || window.currentEmailData.length === 0) return;
+            
+            // Toggle direction if same column, otherwise default to ascending
+            if (window.currentSort.column === column) {
+                window.currentSort.direction = window.currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                window.currentSort.column = column;
+                window.currentSort.direction = 'asc';
+            }
+            
+            // Update header classes
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+                if (th.dataset.sort === column) {
+                    th.classList.add(window.currentSort.direction);
+                }
+            });
+            
+            // Sort the data
+            const sorted = [...window.currentEmailData].sort((a, b) => {
+                let valA, valB;
+                
+                if (column === 'name') {
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                } else if (column === 'email') {
+                    valA = a.email.toLowerCase();
+                    valB = b.email.toLowerCase();
+                } else if (column === 'confidence') {
+                    valA = a.confidence;
+                    valB = b.confidence;
+                } else if (column === 'source') {
+                    valA = (a.source_domain || '').toLowerCase();
+                    valB = (b.source_domain || '').toLowerCase();
+                }
+                
+                if (valA < valB) return window.currentSort.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return window.currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            // Update the emails list for copy all
+            window.currentEmails = sorted.map(e => e.email);
+            
+            // Re-render the table
+            renderTable(sorted);
+        }
+
+        function copyEmail(email, button) {
+            navigator.clipboard.writeText(email).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy email');
+            });
+        }
+
+        function copyAllEmails() {
+            if (!window.currentEmails || window.currentEmails.length === 0) {
+                alert('No emails to copy');
+                return;
+            }
+            const allEmails = window.currentEmails.join('\n');
+            navigator.clipboard.writeText(allEmails).then(() => {
+                const btn = document.querySelector('.btn-copy-all');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy emails');
+            });
         }
     </script>
 </body>

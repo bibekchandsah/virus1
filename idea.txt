@@ -8,6 +8,11 @@ https://cse.kiit.ac.in/profiles/lipika-mohanty/
 https://biotech.kiit.ac.in/staff/
 
 
+sort in ascending & descending order 
+user will be able to edit username
+support multiple url with comma
+pagination 
+remove duplicate and show unique emails only show duplicate in another table
 
 
 
