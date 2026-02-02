@@ -442,6 +442,40 @@
             cursor: not-allowed;
         }
 
+        .search-container {
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 16px 12px 42px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23999'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 12px center;
+            background-size: 20px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
+
+        .search-stats {
+            font-size: 13px;
+            color: #666;
+            margin-top: 8px;
+        }
+
         .error-message {
             display: none;
             background: #f8d7da;
@@ -562,6 +596,15 @@
                 </div>
             </div>
 
+            <div class="search-container">
+                <input type="text" 
+                       class="search-input" 
+                       id="searchInput" 
+                       placeholder="Search by name or email..." 
+                       oninput="handleSearch()">
+                <div class="search-stats" id="searchStats"></div>
+            </div>
+
             <div class="table-container">
                 <table id="resultsTable">
                     <thead>
@@ -622,6 +665,10 @@
         let currentPage = 1;
         let pageSize = 20;
         let totalPages = 1;
+        
+        // Search state
+        let searchQuery = '';
+        let filteredEmailData = [];
 
         // Handle Enter key in URL input
         document.getElementById('url').addEventListener('keypress', function(e) {
@@ -741,17 +788,25 @@
             subtitle += ` | Time: ${data.scrape_time}s`;
             document.getElementById('resultsSubtitle').textContent = subtitle;
 
+            // Clear search
+            document.getElementById('searchInput').value = '';
+            searchQuery = '';
+            document.getElementById('searchStats').textContent = '';
+
             if (data.emails.length === 0) {
                 document.getElementById('noResults').style.display = 'block';
                 document.querySelector('.table-container').style.display = 'none';
                 document.getElementById('pagination').style.display = 'none';
+                document.querySelector('.search-container').style.display = 'none';
             } else {
                 document.getElementById('noResults').style.display = 'none';
                 document.querySelector('.table-container').style.display = 'block';
+                document.querySelector('.search-container').style.display = 'block';
 
                 // Store emails for copy all and sorting functions
                 window.currentEmails = data.emails.map(e => e.email);
                 window.currentEmailData = data.emails;
+                filteredEmailData = [...data.emails];
                 window.currentSort = { column: null, direction: 'asc' };
 
                 // Reset pagination
@@ -763,9 +818,34 @@
             document.getElementById('results').classList.add('active');
         }
 
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+            
+            if (!searchQuery) {
+                filteredEmailData = [...window.currentEmailData];
+                document.getElementById('searchStats').textContent = '';
+            } else {
+                filteredEmailData = window.currentEmailData.filter(email => 
+                    email.name.toLowerCase().includes(searchQuery) ||
+                    email.email.toLowerCase().includes(searchQuery)
+                );
+                document.getElementById('searchStats').textContent = 
+                    `Showing ${filteredEmailData.length} of ${window.currentEmailData.length} results`;
+            }
+            
+            // Update copy all to use filtered data
+            window.currentEmails = filteredEmailData.map(e => e.email);
+            
+            // Reset to first page
+            currentPage = 1;
+            updatePagination();
+            renderCurrentPage();
+        }
+
         function updatePagination() {
-            const totalItems = window.currentEmailData.length;
+            const totalItems = filteredEmailData.length;
             totalPages = Math.ceil(totalItems / pageSize);
+            if (totalPages < 1) totalPages = 1;
             
             if (totalPages <= 1 && totalItems <= 20) {
                 document.getElementById('pagination').style.display = 'none';
@@ -780,15 +860,16 @@
             document.getElementById('btnPrev').disabled = currentPage === 1;
             document.getElementById('btnNext').disabled = currentPage === totalPages;
             document.getElementById('btnLast').disabled = currentPage === totalPages;
+            document.getElementById('btnLast').disabled = currentPage === totalPages;
         }
 
         function renderCurrentPage() {
             const startIndex = (currentPage - 1) * pageSize;
             const endIndex = startIndex + pageSize;
-            const pageData = window.currentEmailData.slice(startIndex, endIndex);
+            const pageData = filteredEmailData.slice(startIndex, endIndex);
             
-            // Update currentEmails to reflect current page for copy all
-            window.currentEmails = window.currentEmailData.map(e => e.email);
+            // Update currentEmails to reflect filtered data for copy all
+            window.currentEmails = filteredEmailData.map(e => e.email);
             
             renderTable(pageData);
         }
@@ -910,10 +991,14 @@
                 return;
             }
             
-            // Update the stored data
+            // Update the stored data in both arrays
             const emailData = window.currentEmailData.find(e => e.email === emailAddress);
             if (emailData) {
                 emailData.name = newName;
+            }
+            const filteredData = filteredEmailData.find(e => e.email === emailAddress);
+            if (filteredData) {
+                filteredData.name = newName;
             }
         }
 
@@ -936,8 +1021,8 @@
                 }
             });
             
-            // Sort the data
-            window.currentEmailData.sort((a, b) => {
+            // Sort comparator function
+            const sortComparator = (a, b) => {
                 let valA, valB;
                 
                 if (column === 'name') {
@@ -957,10 +1042,14 @@
                 if (valA < valB) return window.currentSort.direction === 'asc' ? -1 : 1;
                 if (valA > valB) return window.currentSort.direction === 'asc' ? 1 : -1;
                 return 0;
-            });
+            };
+            
+            // Sort both the original and filtered data
+            window.currentEmailData.sort(sortComparator);
+            filteredEmailData.sort(sortComparator);
             
             // Update the emails list for copy all
-            window.currentEmails = window.currentEmailData.map(e => e.email);
+            window.currentEmails = filteredEmailData.map(e => e.email);
             
             // Reset to first page and re-render
             currentPage = 1;

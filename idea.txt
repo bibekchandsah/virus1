@@ -6,6 +6,7 @@ https://ksca.kiit.ac.in/people/
 https://biotech.kiit.ac.in/faculty/
 https://cse.kiit.ac.in/profiles/lipika-mohanty/
 https://biotech.kiit.ac.in/staff/
+https://chennai.vit.ac.in/computer-science-engineering-chennai/faculty/
 
 
 sort in ascending & descending order 
